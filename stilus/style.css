@@ -1,0 +1,13 @@
+.chapter-number::after {
+  content: ".";
+}
+
+.header-section-number::after {
+  content: ".";
+}
+
+/* ábra- és táblázatcímek balra igazítva */
+.quarto-float-caption,
+figcaption {
+  text-align: left;
+}

@@ -1,0 +1,230 @@
+---
+title: "Kutatási beszámoló"
+subtitle: "A Star Wars szereplők és a flow-élmény elemzése"
+author: "Abari Kálmán"
+date: today
+date-format: "YYYY. MMMM D."
+lang: hu
+language: nyelv/hungarian.yml
+bibliography: hivatkozasok/hivatkozasok.bib
+csl: hivatkozasok/apahun.csl
+execute:
+  echo: true
+  warning: false
+  message: false
+editor_options:
+  chunk_output_type: console
+format:
+  html:
+    theme: cerulean
+    css: stilus/style.css
+    title-block-banner: true
+    embed-resources: true
+    toc: true
+    toc-location: left
+    toc-expand: 2
+    number-sections: true
+    number-depth: 3
+    code-fold: true
+    code-tools: true
+    fig-cap-location: top
+    tbl-cap-location: top
+    filters:
+      - at: post-render
+        path: szurok/caption.lua
+---
+
+# Bevezetés
+
+Ebben a dokumentumban a projekt `adat` könyvtárában található állományokat elemezzük. Az elemzéseket R-ben [@R2025] végezzük, az adatok beolvasásához a {rio} [@rio2023], az adatkezeléshez és az ábrák elkészítéséhez a {tidyverse} [@tidyverse2019] csomagokat használjuk. A táblázatokat HTML kimenetben a {gt} csomag [@gt2025], a többi kimeneti formátumban a `knitr::kable()` függvény formázza.
+
+Az `adat` könyvtár állományainak főbb jellemzőit táblázatba foglaltuk ([-@tbl-allomanyok]. táblázat).
+
+| Állomány        | Sorok | Oszlopok | Tartalom                          |
+|-----------------|------:|---------:|-----------------------------------|
+| `starwars.xlsx` |    87 |       14 | Star Wars szereplők jellemzői     |
+| `flow.xlsx`     |   100 |       25 | demográfia és 20 flow-tétel       |
+| `flow2.xlsx`    |   100 |       26 | `flow.xlsx` és a flow-pontszám    |
+
+: Az `adat` könyvtár állományai {#tbl-allomanyok}
+
+# Adatok betöltése és előkészítése
+
+```{r}
+#| label: setup
+library(tidyverse)
+
+# számok formázása magyar tizedesvesszővel
+szam <- function(x, digits = 2) {
+  formatC(x, format = "f", digits = digits, decimal.mark = ",")
+}
+
+# p-érték formázása APA szerint
+p_ertek <- function(p) {
+  if (p < 0.001) "*p* < 0,001" else paste("*p* =", szam(p, 3))
+}
+
+# táblázat formázása: HTML-ben {gt}, egyéb formátumokban knitr::kable()
+tabla <- function(df, digits = 2) {
+  if (knitr::is_html_output()) {
+    gt::gt(df) |>
+      gt::fmt_number(columns = where(is.double), decimals = digits,
+                     dec_mark = ",", sep_mark = " ")
+  } else {
+    knitr::kable(df, digits = digits, booktabs = TRUE,
+                 format.args = list(decimal.mark = ",", big.mark = " "))
+  }
+}
+```
+
+```{r}
+#| label: beolvasas
+starwars <- rio::import("adat/starwars.xlsx")
+flow     <- rio::import("adat/flow.xlsx")
+flow2    <- rio::import("adat/flow2.xlsx")
+
+# az adatok áttekintése
+glimpse(starwars, width = 70)
+```
+
+A `flow.xlsx` állomány a flow-kérdőív 20 tételét tartalmazza. A tételek átlagaként kiszámoljuk a flow-pontszámot, majd ellenőrizzük, hogy az egyezik-e a `flow2.xlsx` állomány `pont` változójával.
+
+```{r}
+#| label: flow-pontszam
+flow <- flow |>
+  mutate(
+    pont        = rowMeans(pick(flow.1:flow.20)),
+    alkotoi.tev = factor(alkatoi.tev, levels = c("Igen", "Nem")),
+    nem         = factor(nem),
+    isk.vegz    = factor(isk.vegz, levels = c("Általános iskola", "Szakközépiskola",
+                                              "Gimnázium", "Főiskola", "Egyetem"))
+  )
+
+all.equal(flow$pont, flow2$pont)
+```
+
+A számított és az eltárolt flow-pontszám `r if (isTRUE(all.equal(flow$pont, flow2$pont))) "minden válaszadónál megegyezik" else "eltér"`, így a továbbiakban a `flow` adattáblával dolgozunk.
+
+# A Star Wars szereplők elemzése
+
+## Alapvető leíró statisztikák
+
+Az adatkészlet **`r nrow(starwars)`** karakter adatait tartalmazza, akik **`r n_distinct(starwars$species, na.rm = TRUE)`** különböző fajhoz tartoznak.
+
+```{r}
+#| label: summary-stats
+summary(starwars |> select(height, mass, birth_year))
+```
+
+A legalább három szereplővel képviselt fajok testmagasságát a [-@tbl-sw-fajok]. táblázat mutatja be.
+
+```{r}
+#| label: tbl-sw-fajok
+#| tbl-cap: "A legalább három szereplővel képviselt fajok testmagassága (cm)"
+starwars |>
+  filter(!is.na(species), !is.na(height)) |>
+  group_by(Faj = species) |>
+  summarise(N = n(), Átlag = mean(height), Szórás = sd(height),
+            Minimum = min(height), Maximum = max(height)) |>
+  filter(N >= 3) |>
+  arrange(desc(N)) |>
+  tabla(digits = 1)
+```
+
+## Magasság és tömeg közötti kapcsolat
+
+```{r}
+#| label: sw-korrelacio
+#| include: false
+sw <- starwars |> filter(!is.na(height), !is.na(mass))
+sw_kor   <- cor.test(~ height + mass, data = sw)
+sw_kor_j <- cor.test(~ height + mass,
+                     data = sw |> filter(name != "Jabba Desilijic Tiure"))
+```
+
+Vizsgáljuk meg a karakterek magassága és tömege közötti kapcsolatot egy ábrával ([-@fig-sw-magassag-tomeg]. ábra). Az ábrán jól látható egy kiugró érték: Jabba, a hutt, akinek a tömege `r szam(max(sw$mass), 0)` kg. A magasság- és tömegadattal is rendelkező szereplők (*n* = `r nrow(sw)`) adatai alapján a két változó közötti Pearson-féle korreláció *r* = `r szam(sw_kor$estimate)` (`r p_ertek(sw_kor$p.value)`), Jabba nélkül azonban *r* = `r szam(sw_kor_j$estimate)` (`r p_ertek(sw_kor_j$p.value)`), vagyis a kapcsolat erős és pozitív, csak az egyetlen kiugró érték elfedi.
+
+```{r}
+#| label: fig-sw-magassag-tomeg
+#| fig-cap: "A Star Wars karakterek magassága és tömege közötti kapcsolat"
+#| fig-width: 6
+#| fig-asp: 0.6
+ggplot(sw, aes(x = height, y = mass)) +
+  geom_point(color = "#3C6E91", alpha = 0.8) +
+  annotate("text", x = 175, y = 1358, label = "Jabba", hjust = 1.1, size = 3.5) +
+  labs(x = "Magasság (cm)", y = "Tömeg (kg)") +
+  theme_minimal()
+```
+
+# A flow-élmény elemzése
+
+## A minta jellemzői
+
+A flow-kérdőívet `r nrow(flow)` fő töltötte ki (`r sum(flow$nem == "Nő")` nő és `r sum(flow$nem == "Férfi")` férfi), átlagéletkoruk `r szam(mean(flow$kor), 1)` év (*SD* = `r szam(sd(flow$kor), 1)`). A válaszadók iskolai végzettség és alkotói tevékenység szerinti megoszlását a [-@tbl-flow-minta]. táblázat tartalmazza.
+
+```{r}
+#| label: tbl-flow-minta
+#| tbl-cap: "A válaszadók megoszlása iskolai végzettség és alkotói tevékenység szerint (fő)"
+flow |>
+  count(`Iskolai végzettség` = isk.vegz, alkotoi.tev) |>
+  pivot_wider(names_from = alkotoi.tev, values_from = n, values_fill = 0) |>
+  rename(Alkotó = Igen, `Nem alkotó` = Nem) |>
+  mutate(Összesen = Alkotó + `Nem alkotó`) |>
+  tabla()
+```
+
+## A flow-pontszám és az alkotói tevékenység
+
+Kutatási hipotézisünk szerint az alkotó tevékenységet végzők flow-pontszáma magasabb, mint azoké, akik nem végeznek alkotó tevékenységet. A két csoport leíró statisztikáit a [-@tbl-flow-leiro]. táblázat, a pontszámok eloszlását a [-@fig-flow-doboz]. ábra mutatja.
+
+```{r}
+#| label: tbl-flow-leiro
+#| tbl-cap: "A flow-pontszám leíró statisztikái az alkotói tevékenység szerint"
+flow |>
+  group_by(`Alkotói tevékenység` = alkotoi.tev) |>
+  summarise(N = n(), Átlag = mean(pont), Szórás = sd(pont),
+            Medián = median(pont), Minimum = min(pont), Maximum = max(pont)) |>
+  tabla()
+```
+
+```{r}
+#| label: fig-flow-doboz
+#| fig-cap: "A flow-pontszám eloszlása az alkotói tevékenység szerint"
+#| fig-width: 6
+#| fig-asp: 0.55
+ggplot(flow, aes(x = alkotoi.tev, y = pont)) +
+  geom_boxplot(fill = "#DCE6F0", color = "#1F3A5F", width = 0.5,
+               outlier.shape = NA) +
+  geom_jitter(width = 0.12, height = 0, alpha = 0.5, color = "#3C6E91") +
+  labs(x = "Alkotói tevékenység", y = "Flow-pontszám (1–5)") +
+  theme_minimal()
+```
+
+A hipotézist Welch-féle kétmintás *t*-próbával vizsgáltuk, a hatásméretet Cohen-féle *d* mutatóval jellemezzük.
+
+```{r}
+#| label: t-proba
+t_proba <- t.test(pont ~ alkotoi.tev, data = flow)
+cohen_d <- effectsize::cohens_d(pont ~ alkotoi.tev, data = flow, pooled_sd = FALSE)
+t_proba
+cohen_d
+```
+
+```{r}
+#| label: t-proba-szoveg
+#| include: false
+atlagok <- tapply(flow$pont, flow$alkotoi.tev, mean)
+szorasok <- tapply(flow$pont, flow$alkotoi.tev, sd)
+szignifikans <- t_proba$p.value < 0.05
+```
+
+Az alkotó tevékenységet végzők átlagos flow-pontszáma (*M* = `r szam(atlagok["Igen"])`, *SD* = `r szam(szorasok["Igen"])`) `r if (szignifikans) "szignifikánsan" else "nem szignifikánsan"` `r if (atlagok["Igen"] > atlagok["Nem"]) "magasabb" else "alacsonyabb"`, mint a nem alkotóké (*M* = `r szam(atlagok["Nem"])`, *SD* = `r szam(szorasok["Nem"])`), *t*(`r szam(t_proba$parameter, 1)`) = `r szam(t_proba$statistic)`, `r p_ertek(t_proba$p.value)`, *d* = `r szam(cohen_d$Cohens_d)`. Hipotézisünket tehát `r if (szignifikans) "megtartjuk" else "elvetjük"`.
+
+# Összegzés
+
+Az `adat` könyvtár három állományát elemeztük. A Star Wars szereplők körében a magasság és a tömeg között erős pozitív kapcsolat áll fenn, ha a kiugró értéket jelentő Jabbát kizárjuk az elemzésből. A flow-kérdőív adatai alapján a számított flow-pontszám megegyezik a `flow2.xlsx` állományban tárolt értékekkel, és az alkotói tevékenység `r if (szignifikans) "szignifikáns" else "nem szignifikáns"` különbséggel jár együtt a flow-élmény gyakoriságában.
+
+# Irodalomjegyzék
+
+::: {#refs}
+:::

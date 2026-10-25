@@ -1,0 +1,17 @@
+# RStudio
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+
+# Quarto: fordítási melléktermékek és kimenetek
+.quarto/
+*_files/
+elemzes_*.html
+elemzes_*.docx
+elemzes_*.pdf
+elemzes_*.typ
+elemzes_*.tex
+
+
+/.luarc.json
