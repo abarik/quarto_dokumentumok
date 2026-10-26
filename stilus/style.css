@@ -1,7 +1,4 @@
-.chapter-number::after {
-  content: ".";
-}
-
+/* pont a fejezetszámok után: "1." és "1.1." */
 .header-section-number::after {
   content: ".";
 }

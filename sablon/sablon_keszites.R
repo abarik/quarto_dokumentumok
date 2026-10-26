@@ -213,6 +213,8 @@ ir(dokumentum, "word/document.xml")
 # 5. Visszacsomagolás -------------------------------------------------------------
 fajlok <- list.files(munka, recursive = TRUE, all.files = TRUE)
 fajlok <- c("[Content_Types].xml", setdiff(fajlok, "[Content_Types].xml"))
+# rögzített időbélyeg: így minden futás bájtra azonos állományt ad (nincs fölösleges git-változás)
+Sys.setFileTime(file.path(munka, fajlok), as.POSIXct("2025-01-01 00:00:00", tz = "UTC"))
 dir.create(dirname(kimenet), showWarnings = FALSE)
 unlink(kimenet)
 # a root= miatt a zip() átvált a munkakönyvtárba, ezért abszolút útvonal kell

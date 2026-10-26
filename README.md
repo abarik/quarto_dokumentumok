@@ -64,7 +64,7 @@ kepek/          a README képei (a könyv borítója)
 | `hivatkozasok/hivatkozasok.bib` | a hivatkozott művek adatai | mind |
 | `hivatkozasok/apahun.csl` | APA 7 hivatkozási stílus magyar beállításokkal | mind |
 | `stilus/style.css` | pont a fejezetszámok után, balra igazított képaláírások | HTML |
-| `stilus/pdf-feliratok.tex` | képaláírások formázása LaTeX-ben | PDF |
+| `stilus/pdf-feliratok.tex` | képaláírások formázása, pont a szakaszszámok után a tartalomjegyzékben | PDF |
 | `stilus/typst-feliratok.typ` | magyar képaláírások Typstben | Typst |
 | `szurok/caption.lua` | „Táblázat 1:” helyett „**1. táblázat.** *Cím*” | HTML, Word |
 | `szurok/docx-sablon.lua` | pont a szakaszszámok után („3.1.”), záróvonal a táblázatok alatt | Word |
