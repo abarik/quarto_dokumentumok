@@ -3,8 +3,10 @@
   content: ".";
 }
 
-/* ábra- és táblázatcímek balra igazítva */
-.quarto-float-caption,
+/* ábra- és táblázatcímek balra igazítva
+   (a szelektor erősebb a Quarto .quarto-figure-center > figure > figcaption szabályánál) */
+.quarto-float > figure > figcaption.quarto-float-caption,
+figcaption.quarto-float-caption,
 figcaption {
   text-align: left;
 }

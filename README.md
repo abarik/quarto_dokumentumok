@@ -113,13 +113,58 @@ source("sablon/sablon_keszites.R")
 2. Nyissuk meg a `quarto_dokumentumok.Rproj` projektet az RStudióban.
 3. Nyissuk meg valamelyik `elemzes_*.qmd` állományt, és nyomjuk meg a **Render** gombot (Ctrl+Shift+K).
 
-Parancssorból is fordíthatunk:
+A fordítás parancssorból (RStudióban a **Terminal** fülön) vagy az R-konzolból, a {quarto} csomaggal is elindítható. Az alábbi parancsokat a projekt gyökerében kell kiadni.
+
+#### Az egyformátumú dokumentumok
+
+Ezeknek a fejlécében egyetlen formátum szerepel, így nem kell megadni, mit kérünk.
+
+| Állomány | Parancssor | R-konzol | Kimenet |
+|---|---|---|---|
+| HTML | `quarto render elemzes_html.qmd` | `quarto::quarto_render("elemzes_html.qmd")` | `elemzes_html.html` |
+| Word | `quarto render elemzes_docx.qmd` | `quarto::quarto_render("elemzes_docx.qmd")` | `elemzes_docx.docx` |
+| PDF (LaTeX) | `quarto render elemzes_pdf.qmd` | `quarto::quarto_render("elemzes_pdf.qmd")` | `elemzes_pdf.pdf` |
+| PDF (Typst) | `quarto render elemzes_typst.qmd` | `quarto::quarto_render("elemzes_typst.qmd")` | `elemzes_typst.pdf` |
+
+#### A vegyes dokumentum (`elemzes_mix.qmd`)
+
+Az `elemzes_mix.qmd` fejlécében három formátum szerepel (`html`, `docx`, `typst`). Formátum megadása nélkül mindhárom elkészül, a `--to` kapcsolóval (R-ben az `output_format` argumentummal) pedig kiválaszthatjuk, melyik kimenetet kérjük.
+
+Minden kimenet egyszerre (`elemzes_mix.html`, `elemzes_mix.docx` és `elemzes_mix.pdf`):
 
 ```bash
-quarto render elemzes_html.qmd               # egy dokumentum
-quarto render elemzes_mix.qmd                # mindhárom formátum
-quarto render elemzes_mix.qmd --to docx      # csak a Word-változat
+quarto render elemzes_mix.qmd
 ```
+
+```r
+quarto::quarto_render("elemzes_mix.qmd", output_format = "all")
+```
+
+Csak egy kimenet:
+
+```bash
+quarto render elemzes_mix.qmd --to html      # elemzes_mix.html
+quarto render elemzes_mix.qmd --to docx      # elemzes_mix.docx
+quarto render elemzes_mix.qmd --to typst     # elemzes_mix.pdf
+```
+
+```r
+quarto::quarto_render("elemzes_mix.qmd", output_format = "html")
+quarto::quarto_render("elemzes_mix.qmd", output_format = "docx")
+quarto::quarto_render("elemzes_mix.qmd", output_format = "typst")
+```
+
+Kettő a három közül (például HTML és Word):
+
+```bash
+quarto render elemzes_mix.qmd --to html,docx
+```
+
+```r
+quarto::quarto_render("elemzes_mix.qmd", output_format = c("html", "docx"))
+```
+
+Az RStudio **Render** gombja a vegyes dokumentumnál csak egy formátumot fordít le, alapértelmezés szerint a fejlécben elsőként szereplőt (HTML). A gomb melletti lenyíló menüben választhatunk a három formátum közül. Az összes kimenethez a fenti parancsokat használjuk.
 
 A lefordított dokumentumok a `.qmd` állományok mellé, a projekt gyökerébe kerülnek. A repó ezeket nem tárolja (lásd `.gitignore`), hiszen bármikor újra előállíthatók.
 
